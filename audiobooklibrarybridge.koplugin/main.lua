@@ -8,7 +8,6 @@ use KOReader's BookInfoManager.
 This plugin does not play audio itself.
 --]]
 
-local FileChooser = require("ui/widget/filechooser")
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local logger = require("logger")
 local _ = require("gettext")
@@ -41,7 +40,13 @@ local function isAudioFile(path)
     return ext and AUDIO_EXTS[ext] or false
 end
 
+local function getFileChooser()
+    return require("ui/widget/filechooser")
+end
+
 local function unsupportedFilesVisible()
+    local FileChooser = getFileChooser()
+
     return FileChooser.show_unsupported == true
         or (
             G_reader_settings
@@ -118,12 +123,125 @@ local function installSidecarCoverProvider()
         return true
     end
 
-    local ok_render, RenderImage = pcall(require, "ui/renderimage")
-    local ok_lfs, lfs = pcall(require, "libs/libkoreader-lfs")
-    local ok_util, util = pcall(require, "util")
-    if not (ok_render and ok_lfs and ok_util) then
-        logger.warn("audiobooklibrarybridge: cover dependencies unavailable")
-        return false
+    -- Keep the provider hook cheap at startup. Image decoding, filesystem
+    -- helpers, and utility code are loaded only if an audio cover is actually
+    -- requested.
+    local RenderImage
+    local lfs
+    local util
+
+    local cover_cache = {}
+    local cover_order = {}
+    local COVER_CACHE_MAX = 2
+    local COVER_MAX_W = 360
+    local COVER_MAX_H = 540
+
+    local function ensureCoverDependencies()
+        if RenderImage and lfs and util then
+            return true
+        end
+
+        local ok_render
+        local ok_lfs
+        local ok_util
+
+        ok_render, RenderImage =
+            pcall(require, "ui/renderimage")
+        ok_lfs, lfs =
+            pcall(require, "libs/libkoreader-lfs")
+        ok_util, util =
+            pcall(require, "util")
+
+        return ok_render
+            and ok_lfs
+            and ok_util
+    end
+
+    local function removeFromCoverOrder(path)
+        for i, cached_path in ipairs(cover_order) do
+            if cached_path == path then
+                table.remove(cover_order, i)
+                return
+            end
+        end
+    end
+
+    local function getMasterCover(cover_path)
+        local mtime =
+            lfs.attributes(cover_path, "modification")
+        local cached = cover_cache[cover_path]
+
+        if cached
+                and cached.mtime == mtime
+                and cached.bb
+        then
+            removeFromCoverOrder(cover_path)
+            cover_order[#cover_order + 1] =
+                cover_path
+            return cached.bb
+        end
+
+        if cached and cached.bb then
+            pcall(cached.bb.free, cached.bb)
+            cover_cache[cover_path] = nil
+            removeFromCoverOrder(cover_path)
+        end
+
+        local bb = RenderImage:renderImageFile(
+            cover_path,
+            false
+        )
+
+        if not bb then
+            return nil
+        end
+
+        local width = bb:getWidth()
+        local height = bb:getHeight()
+
+        if width > COVER_MAX_W
+                or height > COVER_MAX_H
+        then
+            local scale = math.min(
+                COVER_MAX_W / width,
+                COVER_MAX_H / height
+            )
+            local target_w =
+                math.max(1, math.floor(width * scale))
+            local target_h =
+                math.max(1, math.floor(height * scale))
+
+            bb = RenderImage:scaleBlitBuffer(
+                bb,
+                target_w,
+                target_h,
+                true
+            )
+        end
+
+        if not bb then
+            return nil
+        end
+
+        cover_cache[cover_path] = {
+            bb = bb,
+            mtime = mtime,
+        }
+        cover_order[#cover_order + 1] =
+            cover_path
+
+        while #cover_order > COVER_CACHE_MAX do
+            local oldest =
+                table.remove(cover_order, 1)
+            local entry = cover_cache[oldest]
+            cover_cache[oldest] = nil
+
+            if entry and entry.bb then
+                pcall(entry.bb.free, entry.bb)
+            end
+        end
+
+        return bb
     end
 
     local orig_getBookInfo = BookInfoManager.getBookInfo
@@ -138,6 +256,10 @@ local function installSidecarCoverProvider()
             return bookinfo
         end
 
+        if not ensureCoverDependencies() then
+            return bookinfo
+        end
+
         local cover_path = sidecarCoverPath(filepath)
         if not cover_path
                 or lfs.attributes(cover_path, "mode") ~= "file"
@@ -145,16 +267,18 @@ local function installSidecarCoverProvider()
             return bookinfo
         end
 
-        -- Return a fresh buffer for every BookInfoManager request.
-        -- Stock CoverBrowser may explicitly free the returned cover_bb, while
-        -- SimpleUI may retain it. Sharing one decoded buffer across callers
-        -- would therefore risk handing a later screen an already-freed buffer.
-        local cover_bb = RenderImage:renderImageFile(
-            cover_path,
-            false
-        )
+        -- Decode each recently used cover once, keep only two bounded masters,
+        -- and return an independent copy. Callers such as stock CoverBrowser
+        -- are then free to dispose of their copy without corrupting the cache.
+        local master_cover =
+            getMasterCover(cover_path)
+        if not master_cover then
+            return bookinfo
+        end
 
-        if not cover_bb then
+        local ok_copy, cover_bb =
+            pcall(master_cover.copy, master_cover)
+        if not ok_copy or not cover_bb then
             return bookinfo
         end
 
@@ -308,6 +432,7 @@ end
 function Bridge:setUnsupportedFilesVisible(enabled)
     enabled = enabled and true or false
 
+    local FileChooser = getFileChooser()
     FileChooser.show_unsupported = enabled
     G_reader_settings:saveSetting(
         "show_unsupported",
