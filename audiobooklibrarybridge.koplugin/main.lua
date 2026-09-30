@@ -100,10 +100,6 @@ local function sidecarCoverPath(filepath)
     return stem .. ".sdr/cover.jpg"
 end
 
--- Weak values avoid retaining decoded cover buffers only because this plugin
--- once displayed them. Active widgets may keep their own references as needed.
-local cover_cache = setmetatable({}, { __mode = "v" })
-
 local function installSidecarCoverProvider()
     -- BookInfoManager belongs to KOReader's CoverBrowser stack. Playback
     -- routing remains functional if this optional integration is unavailable.
@@ -149,16 +145,14 @@ local function installSidecarCoverProvider()
             return bookinfo
         end
 
-        local cover_bb = cover_cache[cover_path]
-        if not cover_bb then
-            cover_bb = RenderImage:renderImageFile(
-                cover_path,
-                false
-            )
-            if cover_bb then
-                cover_cache[cover_path] = cover_bb
-            end
-        end
+        -- Return a fresh buffer for every BookInfoManager request.
+        -- Stock CoverBrowser may explicitly free the returned cover_bb, while
+        -- SimpleUI may retain it. Sharing one decoded buffer across callers
+        -- would therefore risk handing a later screen an already-freed buffer.
+        local cover_bb = RenderImage:renderImageFile(
+            cover_path,
+            false
+        )
 
         if not cover_bb then
             return bookinfo
