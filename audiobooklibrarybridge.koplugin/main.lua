@@ -64,12 +64,28 @@ local function showMessage(message, timeout)
 end
 
 local function findAudiobookPlugin(ReaderUI)
-    -- FileManager is normally active when a library item is tapped.
+    -- Prefer KOReader's plugin registry. This works even when a custom UI
+    -- (such as SimpleUI) is sitting on top of FileManager.
+    local ok_loader, PluginLoader =
+        pcall(require, "pluginloader")
+
+    if ok_loader
+            and PluginLoader
+            and type(PluginLoader.getPluginInstance) == "function"
+    then
+        local audiobook =
+            PluginLoader:getPluginInstance("audiobook")
+
+        if audiobook then
+            return audiobook
+        end
+    end
+
+    -- Fallback for older/unusual KOReader contexts.
     local FM = package.loaded["apps/filemanager/filemanager"]
     local fm = FM and FM.instance
     local audiobook = fm and fm.audiobook
 
-    -- Fall back to ReaderUI for workflows invoked while a book is open.
     if not audiobook and ReaderUI then
         local reader = ReaderUI.instance
         audiobook = reader and reader.audiobook
