@@ -247,63 +247,61 @@ local function installSidecarCoverProvider()
     local orig_getBookInfo = BookInfoManager.getBookInfo
 
     function BookInfoManager:getBookInfo(filepath, ...)
-        -- Start from KOReader/SimpleUI's normal result so new fields added by
-        -- future versions are preserved instead of being reimplemented here.
-        local bookinfo = orig_getBookInfo(self, filepath, ...)
         local get_cover = select(1, ...)
 
+        -- Normal documents stay on KOReader's native path with effectively
+        -- just an extension check added by this bridge.
         if not (get_cover and isAudioFile(filepath)) then
-            return bookinfo
+            return orig_getBookInfo(self, filepath, ...)
         end
 
         if not ensureCoverDependencies() then
-            return bookinfo
+            return orig_getBookInfo(self, filepath, ...)
         end
 
         local cover_path = sidecarCoverPath(filepath)
         if not cover_path
                 or lfs.attributes(cover_path, "mode") ~= "file"
         then
-            return bookinfo
+            return orig_getBookInfo(self, filepath, ...)
         end
 
-        -- Decode each recently used cover once, keep only two bounded masters,
-        -- and return an independent copy. Callers such as stock CoverBrowser
-        -- are then free to dispose of their copy without corrupting the cache.
+        -- Audio is not a KOReader document, so when a sidecar exists there is
+        -- no benefit in running the normal document metadata/provider lookup.
+        -- This is a hot path in cover-heavy UIs such as SimpleUI.
         local master_cover =
             getMasterCover(cover_path)
         if not master_cover then
-            return bookinfo
+            return orig_getBookInfo(self, filepath, ...)
         end
 
         local ok_copy, cover_bb =
             pcall(master_cover.copy, master_cover)
         if not ok_copy or not cover_bb then
-            return bookinfo
+            return orig_getBookInfo(self, filepath, ...)
         end
 
         local directory, filename =
             util.splitFilePathName(filepath)
 
-        bookinfo = bookinfo or {}
-        bookinfo.directory = bookinfo.directory or directory
-        bookinfo.filename = bookinfo.filename or filename
-        bookinfo.in_progress = bookinfo.in_progress or 0
-        bookinfo.cover_fetched = "Y"
-        bookinfo.has_cover = true
-        bookinfo.ignore_cover = nil
-        bookinfo.cover_w = cover_bb:getWidth()
-        bookinfo.cover_h = cover_bb:getHeight()
-        bookinfo.cover_bb = cover_bb
+        local bookinfo = {
+            directory = directory,
+            filename = filename,
+            in_progress = 0,
+            cover_fetched = "Y",
+            has_meta = nil,
+            has_cover = true,
+            ignore_meta = "Y",
+            ignore_cover = nil,
+            cover_w = cover_bb:getWidth(),
+            cover_h = cover_bb:getHeight(),
+            cover_bb = cover_bb,
+            _is_directory = false,
+            _no_provider = true,
+        }
+
         bookinfo.cover_sizetag =
             bookinfo.cover_w .. "x" .. bookinfo.cover_h
-        bookinfo._is_directory = false
-        bookinfo._no_provider = true
-
-        -- Audio is intentionally not registered with DocumentRegistry as a
-        -- document type, so leave text-metadata extraction disabled.
-        bookinfo.has_meta = bookinfo.has_meta or nil
-        bookinfo.ignore_meta = "Y"
 
         return bookinfo
     end
