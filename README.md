@@ -127,6 +127,8 @@ The bridge's `ReaderUI:showReader()` hook matches KOReader v2026.07.1's current 
 
 The implementation avoids device-specific paths. Actual audio output capabilities still depend on the device and Audiobook Read-Along's platform support. A clean-device runtime test is still recommended before treating a development build as a release.
 
+For low-memory devices, sidecar artwork uses a tiny bounded decoded-cover cache (two masters) and hands callers independent copies. Heavy image helpers are loaded only when artwork is requested, and the ReaderUI compatibility hook is deferred until after KOReader's initial file-manager paint.
+
 ## Privacy
 
 This plugin stores no server credentials and contains no device-specific configuration.
