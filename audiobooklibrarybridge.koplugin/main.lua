@@ -179,10 +179,38 @@ function Bridge:init()
             local audiobook = findAudiobookPlugin(ReaderUI)
 
             if playerReady(audiobook) then
+                -- Audiobook Read-Along owns the platform-specific audio
+                -- readiness checks (Bluetooth/output setup, where needed).
+                if type(audiobook._audioOutputReady) == "function" then
+                    local ok_ready, ready = pcall(
+                        audiobook._audioOutputReady,
+                        audiobook
+                    )
+                    if ok_ready and not ready then
+                        return
+                    end
+                end
+
                 logger.dbg(
                     "audiobooklibrarybridge: routing audio file to Audiobook Read-Along"
                 )
-                audiobook:_playAudioFile(file)
+
+                local ok_play, play_err = pcall(
+                    audiobook._playAudioFile,
+                    audiobook,
+                    file
+                )
+
+                if not ok_play then
+                    logger.warn(
+                        "audiobooklibrarybridge: playback routing failed:",
+                        tostring(play_err)
+                    )
+                    showMessage(
+                        _("Audiobook playback could not be started. Check the KOReader log for details."),
+                        7
+                    )
+                end
                 return
             end
 
