@@ -67,9 +67,17 @@ Restart KOReader after installation.
 
 ### 3. Make audio files visible
 
-In KOReader, enable **Show unsupported files** if your audio files do not appear in the file browser.
+Open:
 
-The bridge intentionally does not silently change this global KOReader setting because it controls visibility for all unsupported file types, not only audiobooks.
+```text
+Tools → Audiobook Library Bridge
+```
+
+and enable:
+
+**Show unsupported files (required for audio)**
+
+The bridge uses KOReader's existing global setting rather than inventing a separate file browser. Be aware that this setting makes **all** unsupported file types visible, not only audio files. You can also change the same setting from KOReader's normal file-browser settings.
 
 ## Using it
 
@@ -107,9 +115,17 @@ The companion **KOReader Jellyfin Enhanced** plugin can create this sidecar auto
 
 ## Compatibility
 
-Development and initial testing are based on KOReader `v2026.07.1`. The implementation avoids device-specific paths and is intended to work anywhere KOReader and Audiobook Read-Along support audio playback.
+The current development branch has been source-audited against:
 
-Actual audio output capabilities depend on the device and Audiobook Read-Along's platform support.
+| Component | Verified release |
+| --- | --- |
+| KOReader | `v2026.07.1` |
+| Audiobook Read-Along | `v0.2.11` |
+| SimpleUI | `2.7.1` |
+
+The bridge's `ReaderUI:showReader()` hook matches KOReader v2026.07.1's current signature, and Audiobook Read-Along v0.2.11 still exposes the playback and audio-readiness methods used by the bridge. SimpleUI 2.7.1 obtains covers through KOReader's `BookInfoManager`, which is the integration point used here.
+
+The implementation avoids device-specific paths. Actual audio output capabilities still depend on the device and Audiobook Read-Along's platform support. A clean-device runtime test is still recommended before treating a development build as a release.
 
 ## Privacy
 
