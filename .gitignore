@@ -1,0 +1,14 @@
+settings.reader.lua
+settings.reader.lua.old
+history.lua
+crash.log
+*.log
+*.db
+*.sqlite
+*.sqlite3
+books/
+*.sdr/
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
