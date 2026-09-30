@@ -334,22 +334,25 @@ function Bridge:init()
         )
     end
 
-    local ok_reader, ReaderUI =
-        pcall(require, "apps/reader/readerui")
-    if not ok_reader or not ReaderUI then
-        logger.warn("audiobooklibrarybridge: ReaderUI not available")
-        return
-    end
+    local function installReaderHook()
+        local ok_reader, ReaderUI =
+            pcall(require, "apps/reader/readerui")
+        if not ok_reader or not ReaderUI then
+            logger.warn("audiobooklibrarybridge: ReaderUI not available")
+            return
+        end
 
-    -- FileManager and ReaderUI recreate plugin instances. Patch the ReaderUI
-    -- class only once per KOReader process.
-    if ReaderUI._audiobook_bridge_patched then return end
-    ReaderUI._audiobook_bridge_patched = true
+        -- FileManager and ReaderUI recreate plugin instances. Patch the
+        -- ReaderUI class only once per KOReader process.
+        if ReaderUI._audiobook_bridge_patched then
+            return
+        end
+        ReaderUI._audiobook_bridge_patched = true
 
-    local orig_showReader = ReaderUI.showReader
+        local orig_showReader = ReaderUI.showReader
 
-    ReaderUI.showReader =
-        function(
+        ReaderUI.showReader =
+            function(
             cls,
             file,
             provider,
@@ -416,15 +419,28 @@ function Bridge:init()
                 return
             end
 
-            return orig_showReader(
-                cls,
-                file,
-                provider,
-                seamless,
-                is_provider_forced,
-                after_open_callback
-            )
-        end
+                return orig_showReader(
+                    cls,
+                    file,
+                    provider,
+                    seamless,
+                    is_provider_forced,
+                    after_open_callback
+                )
+            end
+    end
+
+    -- Loading ReaderUI is relatively expensive on low-end devices. Deferring
+    -- it one event-loop turn lets the FileManager finish its first paint while
+    -- still installing the hook long before a user can select an audiobook.
+    local ok_manager, UIManager =
+        pcall(require, "ui/uimanager")
+
+    if ok_manager and UIManager then
+        UIManager:nextTick(installReaderHook)
+    else
+        installReaderHook()
+    end
 end
 
 function Bridge:setUnsupportedFilesVisible(enabled)
