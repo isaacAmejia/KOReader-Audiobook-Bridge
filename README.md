@@ -141,9 +141,9 @@ This plugin stores no server credentials and contains no device-specific configu
 ## Publishing a release
 
 1. Set the new version in `audiobooklibrarybridge.koplugin/_meta.lua`.
-2. Commit, then push a matching tag, for example `git tag v1.2.3 && git push origin v1.2.3`.
+2. Merge or push the change to `main`.
 
-GitHub Actions checks that the tag matches the plugin version, builds `audiobooklibrarybridge.koplugin.zip`, and publishes the release. The download link above and **Check for updates** on devices both pick it up automatically.
+GitHub Actions then tags the commit, builds `audiobooklibrarybridge.koplugin.zip`, and publishes the release. The download link above and **Check for updates** on devices both pick it up automatically.
 
 ## License
 
