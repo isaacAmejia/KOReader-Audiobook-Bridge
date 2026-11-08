@@ -12,6 +12,12 @@ local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local logger = require("logger")
 local _ = require("gettext")
 
+-- Load by path, not require("updater"): KOReader plugins share Lua's module
+-- cache, so a generic module name could resolve to another plugin's copy.
+local PLUGIN_DIR =
+    (debug.getinfo(1, "S").source or ""):match("^@(.*/)") or "./"
+local Updater = dofile(PLUGIN_DIR .. "updater.lua")
+
 local Bridge = WidgetContainer:extend {
     name = "audiobooklibrarybridge",
     is_doc_only = false,
@@ -321,6 +327,12 @@ local function playerReady(audiobook)
 end
 
 function Bridge:init()
+    self.updater = Updater:new {
+        repo = "isaacAmejia/KOReader-Audiobook-Bridge",
+        folder = "audiobooklibrarybridge.koplugin",
+        title = _("Audiobook Library Bridge"),
+    }
+
     if self.ui and self.ui.menu then
         self.ui.menu:registerToMainMenu(self)
     end
@@ -517,7 +529,9 @@ function Bridge:addToMainMenu(menu_items)
 
                     showMessage(status, 10)
                 end,
+                separator = true,
             },
+            self.updater:getMenuItem(),
         },
     }
 end
