@@ -1,6 +1,6 @@
 # KOReader Audiobook Bridge
 
-Open audiobook and music files directly from KOReader's file browser with **Audiobook Read-Along**, with optional sidecar cover support for library interfaces such as SimpleUI.
+Open audiobook and music files directly from KOReader's file browser with [Audiobook Read-Along](https://github.com/stradichenko/audiobook.koplugin), with optional sidecar cover support for library interfaces such as SimpleUI.
 
 This plugin is a small compatibility layer. It does **not** contain an audio player and does not modify KOReader core files.
 
@@ -33,7 +33,7 @@ If your library UI uses KOReader's BookInfoManager, that `cover.jpg` can be show
 ## Requirements
 
 1. **KOReader**
-2. **Audiobook Read-Along** by `stradichenko`
+2. [Audiobook Read-Along](https://github.com/stradichenko/audiobook.koplugin) by stradichenko
 3. KOReader's **Show unsupported files** option enabled if you want audio files to appear in the normal file browser
 
 Audiobook Read-Along is a separate project and must be installed independently.
@@ -42,7 +42,7 @@ Audiobook Read-Along is a separate project and must be installed independently.
 
 ### 1. Install Audiobook Read-Along
 
-Install a current release of `audiobook.koplugin` using that project's instructions.
+Install the latest [Audiobook Read-Along release](https://github.com/stradichenko/audiobook.koplugin/releases/latest) by following that project's instructions. Use the release `.zip` under **Assets**, not "Source code", because the release includes the playback engine.
 
 ### 2. Install this bridge
 
@@ -110,7 +110,7 @@ Dune.m4b
 Dune.sdr/cover.jpg
 ```
 
-The companion **KOReader Jellyfin Enhanced** plugin can create this sidecar automatically when it downloads an audiobook from Jellyfin.
+The companion [KOReader Jellyfin Enhanced](https://github.com/isaacAmejia/KOReader-Jellyfin-Enhanced) plugin can create this sidecar automatically when it downloads an audiobook from Jellyfin.
 
 ## Relationship to other projects
 
@@ -120,9 +120,9 @@ The companion **KOReader Jellyfin Enhanced** plugin can create this sidecar auto
 
 ## Compatibility
 
-The current development branch has been source-audited against:
+Tested with:
 
-| Component | Verified release |
+| Component | Version |
 | --- | --- |
 | KOReader | `v2026.07.1` |
 | Audiobook Read-Along | `v0.2.11` |
@@ -130,7 +130,7 @@ The current development branch has been source-audited against:
 
 The bridge's `ReaderUI:showReader()` hook matches KOReader v2026.07.1's current signature, and Audiobook Read-Along v0.2.11 still exposes the playback and audio-readiness methods used by the bridge. SimpleUI 2.7.1 obtains covers through KOReader's `BookInfoManager`, which is the integration point used here.
 
-The implementation avoids device-specific paths. Actual audio output capabilities still depend on the device and Audiobook Read-Along's platform support. A clean-device runtime test is still recommended before treating a development build as a release.
+The bridge avoids device-specific paths, so it should work on any platform KOReader supports. Whether audio actually plays depends on the device and on Audiobook Read-Along's platform support. It has been tested on Kindle; reports from other devices are welcome.
 
 For low-memory devices, sidecar artwork uses a tiny bounded decoded-cover cache (two masters) and hands callers independent copies. Heavy image helpers are loaded only when artwork is requested, and the ReaderUI compatibility hook is deferred until after KOReader's initial file-manager paint.
 
@@ -145,6 +145,14 @@ This plugin stores no server credentials and contains no device-specific configu
 
 GitHub Actions then tags the commit, builds `audiobooklibrarybridge.koplugin.zip`, and publishes the release. The download link above and **Check for updates** on devices both pick it up automatically.
 
+## Reporting problems
+
+Please [open an issue](https://github.com/isaacAmejia/KOReader-Audiobook-Bridge/issues) and include your KOReader version, your device, and what you were doing when the problem happened. If KOReader wrote a `crash.log`, attach the relevant part.
+
+Before posting logs or settings, remove anything private, such as server addresses, usernames, and access tokens.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+Audiobook Read-Along, SimpleUI, and KOReader are separate projects with their own licenses. This bridge contains none of their code and is not affiliated with or endorsed by them.
