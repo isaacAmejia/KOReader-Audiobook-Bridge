@@ -46,15 +46,8 @@ Install a current release of `audiobook.koplugin` using that project's instructi
 
 ### 2. Install this bridge
 
-Copy this folder:
-
-```text
-audiobooklibrarybridge.koplugin/
-```
-
-into your KOReader `plugins` directory.
-
-Common plugin locations include:
+1. Download **[audiobooklibrarybridge.koplugin.zip](https://github.com/isaacAmejia/KOReader-Audiobook-Bridge/releases/latest/download/audiobooklibrarybridge.koplugin.zip)**. This link always points to the latest release.
+2. Unzip it and copy the `audiobooklibrarybridge.koplugin` folder into your KOReader `plugins` folder:
 
 | Platform | KOReader plugin directory |
 | --- | --- |
@@ -63,7 +56,9 @@ Common plugin locations include:
 | Linux | `~/.config/koreader/plugins/` |
 | Android | `/sdcard/koreader/plugins/` |
 
-Restart KOReader after installation.
+3. Restart KOReader.
+
+If you are replacing a copy installed before updates were available, delete the old `audiobooklibrarybridge.koplugin` folder first.
 
 ### 3. Make audio files visible
 
@@ -78,6 +73,16 @@ and enable:
 **Show unsupported files (required for audio)**
 
 The bridge uses KOReader's existing global setting rather than inventing a separate file browser. Be aware that this setting makes **all** unsupported file types visible, not only audio files. You can also change the same setting from KOReader's normal file-browser settings.
+
+## Updating
+
+After the first install, update from the device:
+
+```text
+Tools → Audiobook Library Bridge → Check for updates
+```
+
+The bridge checks this repository's latest release, shows what changed, installs it, and asks you to restart KOReader. If a download fails or a file arrives damaged, the installed version is left untouched. The device needs internet access to reach GitHub.
 
 ## Using it
 
@@ -132,6 +137,13 @@ For low-memory devices, sidecar artwork uses a tiny bounded decoded-cover cache 
 ## Privacy
 
 This plugin stores no server credentials and contains no device-specific configuration.
+
+## Publishing a release
+
+1. Set the new version in `audiobooklibrarybridge.koplugin/_meta.lua`.
+2. Commit, then push a matching tag, for example `git tag v1.2.3 && git push origin v1.2.3`.
+
+GitHub Actions checks that the tag matches the plugin version, builds `audiobooklibrarybridge.koplugin.zip`, and publishes the release. The download link above and **Check for updates** on devices both pick it up automatically.
 
 ## License
 
